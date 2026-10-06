@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Escape Game Toulouse's challenge – Courbe d'étalonnage</title>
+
+<style>
+:root {
+  --bg:#f4f6f8;
+  --panel:#ffffff;
+  --border:#d6dbe3;
+  --text:#1f2937;
+  --muted:#64748b;
+  --blue:#2563eb;
+  --blue2:#1d4ed8;
+  --console:#111827;
+  --consoleText:#f3f4f6;
+}
+* { box-sizing:border-box; }
+body {
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family:Arial, Helvetica, sans-serif;
+}
+header {
+  background:#fff;
+  border-bottom:1px solid var(--border);
+  padding:12px 16px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  flex-wrap:wrap;
+}
+h1 {
+  margin:0;
+  font-size:18px;
+  flex:1;
+}
+#status {
+  color:var(--muted);
+  font-size:13px;
+}
+button {
+  border:0;
+  border-radius:8px;
+  padding:9px 14px;
+  font-weight:700;
+  cursor:pointer;
+}
+#run {
+  background:var(--blue);
+  color:white;
+}
+#run:hover { background:var(--blue2); }
+#run:disabled { opacity:.55; cursor:wait; }
+#reset {
+  background:#e5e7eb;
+  color:#111827;
+}
+main {
+  display:grid;
+  grid-template-columns:minmax(0, 1.35fr) minmax(360px, .85fr);
+  gap:12px;
+  padding:12px;
+  min-height:calc(100vh - 62px);
+}
+.panel {
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:10px;
+  overflow:hidden;
+  min-height:0;
+}
+.panel-title {
+  padding:10px 12px;
+  font-weight:700;
+  border-bottom:1px solid var(--border);
+  background:#fafafa;
+}
+.editor-wrap {
+  display:grid;
+  grid-template-columns:54px 1fr;
+  min-height:720px;
+}
+#numbers {
+  margin:0;
+  padding:12px 8px 12px 0;
+  text-align:right;
+  color:#7c8798;
+  background:#eef1f5;
+  border-right:1px solid var(--border);
+  font:14px/1.5 Consolas, "Courier New", monospace;
+  white-space:pre;
+  user-select:none;
+  overflow:hidden;
+}
+#code {
+  width:100%;
+  min-height:720px;
+  border:0;
+  outline:0;
+  resize:none;
+  padding:12px;
+  font:14px/1.5 Consolas, "Courier New", monospace;
+  tab-size:4;
+  white-space:pre;
+  overflow:auto;
+}
+.right {
+  display:flex;
+  flex-direction:column;
+}
+#console {
+  margin:0;
+  min-height:170px;
+  max-height:260px;
+  overflow:auto;
+  padding:14px;
+  background:var(--console);
+  color:var(--consoleText);
+  font:14px/1.45 Consolas, "Courier New", monospace;
+  white-space:pre-wrap;
+}
+#plots {
+  padding:12px;
+  overflow:auto;
+  background:#fff;
+  min-height:300px;
+  flex:1;
+}
+#plots img {
+  display:block;
+  max-width:100%;
+  height:auto;
+  margin:0 auto 14px auto;
+  border:1px solid var(--border);
+  border-radius:6px;
+  background:#fff;
+}
+.note {
+  font-size:12px;
+  color:var(--muted);
+  padding:8px 12px;
+  border-top:1px solid var(--border);
+  background:#fafafa;
+}
+@media (max-width:900px) {
+  main { grid-template-columns:1fr; }
+  .editor-wrap, #code { min-height:560px; }
+}
+</style>
+
+<script src="https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.js"></script>
+</head>
+
+<body>
+<header>
+  <h1>Escape Game Toulouse's challenge – Courbe d'étalonnage</h1>
+  <span id="status">Chargement de Python…</span>
+  <button id="run" disabled>▶ Exécuter</button>
+  <button id="reset">↺ Réinitialiser</button>
+</header>
+
+<main>
+  <section class="panel">
+    <div class="panel-title">Éditeur de code Python</div>
+    <div class="editor-wrap">
+      <pre id="numbers"></pre>
+      <textarea id="code" spellcheck="false"></textarea>
+    </div>
+    <div class="note">Les numéros de lignes correspondent à la consigne : 27, 32, 34 et 37.</div>
+  </section>
+
+  <section class="panel right">
+    <div class="panel-title">Console</div>
+    <pre id="console">Python est en cours de chargement…</pre>
+
+    <div class="panel-title">Sortie graphique</div>
+    <div id="plots">
+      <div style="color:#64748b;font-size:13px;">Le graphique s'affichera ici après exécution d'un <code>plt.show()</code>.</div>
+    </div>
+  </section>
+</main>
+
+<script>
+const INITIAL_CODE = "# ch 02 Escape Game Toulouse's challenge : Courbe d'étalonnage\n\n# Tracé de la courbe représentant pour des solutions d'acide sulfurique\n#    les variations de la masse volumique ρ (unité : g/mL)\n#    en fonction de la concentration en masse t (unité : g/L)\n# Sur ce graphe, on reporte:\n#    en abscisse la concentration en masse\n#    en ordonnée la masse volumique\nprint(\"Modifier les lignes de commentaires 27, 32 34 et 37 en lignes d instruction, pour cela, supprimer le # du début de ligne\")\nprint(\"Puis cliquer à nouveau sur Exécuter\")\n# Importation des bibliothèques\nimport matplotlib.pyplot as plt # permet de tracer des graphiques ou des vecteurs\nimport numpy as np # permet d'effectuer des calculs numériques.\nimport scipy.stats as sc # permet de modéliser des graphiques\n\n# Données expérimentales\ny = np.array([1.01,1.11,1.32,1.41]) # ordonnée\nx = np.array([20,117,554,715]) # abscisse\n\n# Affichage\nplt.plot(x, y, \"b+\")   # b:bleu, +:forme des plus\nplt.xlabel(\"concentration en masse t en g/L\")# affiche le nom de la grandeur (et unité) sur l'axe des abscisses\nplt.ylabel(\"masse volumique ρ en g/mL\") #affiche le nom de la grandeur (et unité) sur l'axe des ordonnées\nplt.title(\"Evolution de ρ en fonction de t \")# affiche le titre du graphique\nplt.grid()# trace le quadrillage sur le graphique\nplt.suptitle('...Mme Fourcassier')# affiche un \"surtitre\"\n#plt.show()# trace le graphique\n\n# Modélisation du graphique\ndroite=sc.linregress(x, y)  # calcule le coefficient directeur et l'ordonnée à l'origine d'une droite de régression\ncoefficient=droite.slope# cette instruction attribue à la variable \"coefficient\" le coefficient directeur de la droite précédemment calculée\n#print(\" coefficient directeur  \", coefficient) # cette instruction affiche la valeur de la variable indiquée entre parenthèses\noorigine=droite.intercept# cette instruction attribue à la variable \"oorigine\" l'ordonnée à l'origine \"b\" de cette droite\n#print(\" ordonnée à l’origine : \", oorigine)# cette instruction affiche la valeur de la variable indiquée entre parenthèses\n\nplt.plot(x,coefficient*x+oorigine,\"g\") # dessine la droite de régression qui modélise le nuage de points en vert (green)\n#plt.show()\n\n\n\n\n# TRAVAIL A REALISER\n# Modifier les lignes de commentaires 27, 32, 34 et 37 en lignes d instruction, pour cela, supprimer le # du début de ligne\n# Cliquer sur le crayon au besoin pour modifier\n# Exploiter la modélisation du graphe pour en déduire la valeur de l'énergie massique de vaporisation de l'eau\n# l'exprimer avec 4 chiffres significatifs en kJ/kg\n";
+
+const codeEl = document.getElementById("code");
+const numbersEl = document.getElementById("numbers");
+const consoleEl = document.getElementById("console");
+const plotsEl = document.getElementById("plots");
+const runBtn = document.getElementById("run");
+const resetBtn = document.getElementById("reset");
+const statusEl = document.getElementById("status");
+
+codeEl.value = INITIAL_CODE;
+
+function updateLineNumbers() {
+  const n = codeEl.value.split("\n").length;
+  numbersEl.textContent = Array.from({length:n}, (_,i) => i+1).join("\n");
+}
+updateLineNumbers();
+
+codeEl.addEventListener("input", updateLineNumbers);
+codeEl.addEventListener("scroll", () => {
+  numbersEl.scrollTop = codeEl.scrollTop;
+});
+codeEl.addEventListener("keydown", e => {
+  if (e.key === "Tab") {
+    e.preventDefault();
+    const a = codeEl.selectionStart;
+    const b = codeEl.selectionEnd;
+    codeEl.value = codeEl.value.slice(0,a) + "    " + codeEl.value.slice(b);
+    codeEl.selectionStart = codeEl.selectionEnd = a + 4;
+    updateLineNumbers();
+  }
+});
+
+let pyodide = null;
+
+async function init() {
+  try {
+    pyodide = await loadPyodide();
+    await pyodide.loadPackage(["numpy", "matplotlib", "scipy"]);
+    statusEl.textContent = "Python prêt";
+    consoleEl.textContent = "Prêt.";
+    runBtn.disabled = false;
+  } catch (e) {
+    statusEl.textContent = "Erreur de chargement";
+    consoleEl.textContent = "Impossible de charger Python.\n\n" + e;
+  }
+}
+init();
+
+runBtn.addEventListener("click", async () => {
+  if (!pyodide) return;
+
+  runBtn.disabled = true;
+  statusEl.textContent = "Exécution…";
+  consoleEl.textContent = "";
+  plotsEl.innerHTML = "";
+
+  pyodide.globals.set("USER_CODE", codeEl.value);
+
+  const wrapper = `
+import io, sys, traceback, json, base64
+
+_stdout = io.StringIO()
+_old_stdout = sys.stdout
+sys.stdout = _stdout
+_images = []
+
+try:
+    import matplotlib
+    matplotlib.use("agg")
+    import matplotlib.pyplot as plt
+
+    def _capture_show(*args, **kwargs):
+        global _images
+        for num in plt.get_fignums():
+            fig = plt.figure(num)
+            buf = io.BytesIO()
+            fig.savefig(buf, format="png", bbox_inches="tight", dpi=150)
+            buf.seek(0)
+            _images.append(base64.b64encode(buf.read()).decode("ascii"))
+        # Ne pas fermer la figure :
+        # ainsi un second plt.show() affiche le graphe enrichi
+        # par la droite de régression.
+
+    plt.show = _capture_show
+
+    exec(USER_CODE, globals())
+
+    _result = {
+        "stdout": _stdout.getvalue(),
+        "error": "",
+        "images": _images
+    }
+
+except Exception:
+    _result = {
+        "stdout": _stdout.getvalue(),
+        "error": traceback.format_exc(),
+        "images": _images
+    }
+
+finally:
+    sys.stdout = _old_stdout
+
+json.dumps(_result)
+`;
+
+  try {
+    const raw = await pyodide.runPythonAsync(wrapper);
+    const result = JSON.parse(raw);
+
+    consoleEl.textContent = result.stdout || "";
+    if (result.error) {
+      consoleEl.textContent += (consoleEl.textContent ? "\n" : "") + result.error;
+    }
+    if (!consoleEl.textContent) {
+      consoleEl.textContent = "(aucun texte affiché)";
+    }
+
+    if (result.images.length) {
+      result.images.forEach((b64, index) => {
+        const img = document.createElement("img");
+        img.src = "data:image/png;base64," + b64;
+        img.alt = "Graphique Python " + (index + 1);
+        plotsEl.appendChild(img);
+      });
+    } else {
+      plotsEl.innerHTML =
+        '<div style="color:#64748b;font-size:13px;">Aucun graphique affiché. Vérifie que la ligne <code>plt.show()</code> souhaitée a bien été décommentée.</div>';
+    }
+
+  } catch (e) {
+    consoleEl.textContent = "Erreur d'exécution :\n" + e;
+  } finally {
+    statusEl.textContent = "Python prêt";
+    runBtn.disabled = false;
+  }
+});
+
+resetBtn.addEventListener("click", () => {
+  codeEl.value = INITIAL_CODE;
+  updateLineNumbers();
+  consoleEl.textContent = "Code réinitialisé.";
+  plotsEl.innerHTML =
+    '<div style="color:#64748b;font-size:13px;">Le graphique s\'affichera ici après exécution d\'un <code>plt.show()</code>.</div>';
+});
+</script>
+</body>
+</html>
